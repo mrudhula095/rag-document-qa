@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Env files (NEVER commit these)
+.env
+backend/.env
+frontend/.env
+
+# ChromaDB (local vector store — don't commit)
+backend/chroma_db/
+chroma_db/
+
+# Uploaded files
+backend/uploads/
+uploads/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# React build
+frontend/build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
