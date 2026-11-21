@@ -7,11 +7,10 @@ from typing import List, Dict, Any
 import chromadb
 from chromadb.config import Settings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from services.embeddings import embed_documents
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
-    UnstructuredMarkdownLoader,
     Docx2txtLoader,
 )
 from flask import current_app
@@ -31,10 +30,7 @@ def get_collection():
     )
 
 
-def get_embeddings():
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+
 
 
 def load_document(file_path: str, filename: str) -> List[Any]:
@@ -43,7 +39,7 @@ def load_document(file_path: str, filename: str) -> List[Any]:
     loaders = {
         ".pdf": PyPDFLoader,
         ".txt": TextLoader,
-        ".md": UnstructuredMarkdownLoader,
+        ".md": TextLoader,
         ".docx": Docx2txtLoader,
     }
     loader_cls = loaders.get(ext)
@@ -86,9 +82,9 @@ def process_and_store(file_path: str, filename: str, doc_id: str) -> Dict[str, A
         raise ValueError("No text content found in document")
 
     # Embed
-    embeddings_model = get_embeddings()
+    embeddings = embed_documents(texts)
     texts = [c.page_content for c in chunks]
-    embeddings = embeddings_model.embed_documents(texts)
+    embeddings = embed_documents(texts)
 
     # Store in ChromaDB
     collection = get_collection()

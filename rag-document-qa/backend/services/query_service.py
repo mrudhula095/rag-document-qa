@@ -1,15 +1,13 @@
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
-from langchain_huggingface import HuggingFaceEmbeddings
+from services.embeddings import embed_text
 from flask import current_app
 from .document_service import get_collection
 
 
-def embed_query(query: str) -> List[float]:
-    embeddings_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
-    return embeddings_model.embed_query(query)
+def embed_query(query):
+    return embed_text(query)
+    
 
 
 def retrieve_chunks(
