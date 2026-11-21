@@ -82,7 +82,7 @@ def process_and_store(file_path: str, filename: str, doc_id: str) -> Dict[str, A
         raise ValueError("No text content found in document")
 
     # Embed
-    embeddings = embed_documents(texts)
+        # Embed
     texts = [c.page_content for c in chunks]
     embeddings = embed_documents(texts)
 
