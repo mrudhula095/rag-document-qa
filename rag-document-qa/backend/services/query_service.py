@@ -3,7 +3,7 @@ from openai import OpenAI
 from services.embeddings import embed_text
 from flask import current_app
 from .document_service import get_collection
-
+import os
 
 def embed_query(query):
     return embed_text(query)
@@ -63,7 +63,10 @@ def generate_answer(
     conversation_history: Optional[List[Dict]] = None,
 ) -> Dict[str, Any]:
     """Generate an answer using retrieved context and the LLM."""
-    client = OpenAI(api_key=current_app.config["OPENAI_API_KEY"])
+    client = OpenAI(
+    api_key=current_app.config["OPENAI_API_KEY"],
+    base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+)
     context = build_context(chunks)
 
     system_prompt = f"""You are DocRAG, an expert document Q&A assistant.
