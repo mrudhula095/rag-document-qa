@@ -1,207 +1,158 @@
-# DocRAG — RAG-based Document Q&A System
+# DocRAG: Document Q&A with Retrieval-Augmented Generation
 
-A full-stack Retrieval-Augmented Generation (RAG) application. Upload PDFs, text, or markdown files and ask questions — DocRAG chunks, embeds, and retrieves relevant context before generating precise, source-cited answers.
+<p align="center">
+  <a href="https://rag-document-qa-tqwc.vercel.app">
+    <img src="https://img.shields.io/badge/%F0%9F%9A%80%20LIVE%20APP-Open%20DocRAG-brightgreen?style=for-the-badge" alt="Open the live app" />
+  </a>
+</p>
 
-![Tech Stack](https://img.shields.io/badge/Python-3.11-blue) ![Flask](https://img.shields.io/badge/Flask-3.0-lightgrey) ![React](https://img.shields.io/badge/React-18-61dafb) ![LangChain](https://img.shields.io/badge/LangChain-0.2-green) ![ChromaDB](https://img.shields.io/badge/ChromaDB-0.5-orange) ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--3.5-412991)
+## 🔗 Live App (main link): https://rag-document-qa-tqwc.vercel.app
 
----
+Open the link above to use the app. Upload a document and start asking questions.
 
-## Architecture
-
-```
-User Query
-    │
-    ▼
-React Frontend  ──────────────────────►  Flask Backend
-(Upload UI + Chat)                            │
-                                    ┌─────────┴─────────┐
-                                    │                   │
-                               LangChain           ChromaDB
-                            (PDF loading,        (Vector Store)
-                             chunking,                │
-                             embedding)        Cosine Similarity
-                                    │               Search
-                                    └─────────┬─────────┘
-                                              │
-                                         Top-K Chunks
-                                              │
-                                          OpenAI LLM
-                                        (GPT-3.5-turbo)
-                                              │
-                                     Grounded Answer
-                                      with Citations
-```
-
-## Features
-
-- **Multi-format support** — PDF, TXT, Markdown, DOCX
-- **Real embeddings** — OpenAI `text-embedding-3-small` for semantic search
-- **Persistent vector store** — ChromaDB with cosine similarity
-- **LangChain pipeline** — `RecursiveCharacterTextSplitter` for smart chunking
-- **Multi-turn chat** — conversation history maintained per session
-- **Source citations** — every answer links back to source chunks + page numbers
-- **Document filtering** — select specific docs to query
-- **Token tracking** — see exactly how many tokens each query used
-- **Docker support** — one command to run the full stack
+Backend API (for reference, not the app): https://docrag-backend2.onrender.com/api/health
 
 ---
 
-## Quick Start
+Upload PDF, TXT, Markdown or DOCX files and ask questions about them in plain language. DocRAG splits each document into chunks, converts them to vector embeddings, retrieves the most relevant passages for your question, and has an LLM answer using only that retrieved context, with source citations.
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- OpenAI API key → [platform.openai.com](https://platform.openai.com)
-
-### 1. Clone the repo
-```bash
-git clone https://github.com/YOUR_USERNAME/rag-document-qa.git
-cd rag-document-qa
-```
-
-### 2. Backend setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
-nano .env
-
-python app.py
-# → Running on http://localhost:5000
-```
-
-### 3. Frontend setup (new terminal)
-```bash
-cd frontend
-npm install
-cp .env.example .env
-npm start
-# → Running on http://localhost:3000
-```
-
-### Using Docker (optional)
-```bash
-cp backend/.env.example .env
-# Add your OPENAI_API_KEY to .env
-
-docker-compose up --build
-# Frontend → http://localhost:3000
-# Backend  → http://localhost:5000
-```
+> **Note on the live demo:** the backend runs on a free hosting tier. If the app has been idle, the first request can take up to a minute while the server wakes up. Uploaded documents are not kept permanently and may be cleared when the server restarts.
 
 ---
 
-## API Reference
+## How it works
 
-### Documents
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/documents/upload` | Upload a file (multipart/form-data) |
-| `GET`  | `/api/documents/` | List all indexed documents |
-| `DELETE` | `/api/documents/<doc_id>` | Delete a document and its chunks |
-
-### Query
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/query/` | Full RAG query (retrieval + generation) |
-| `POST` | `/api/query/retrieve` | Retrieval only (no LLM, for debugging) |
-| `GET`  | `/api/health` | Health check |
-
-#### Example query request
-```json
-POST /api/query/
-{
-  "query": "What are the main findings?",
-  "top_k": 5,
-  "doc_ids": ["optional-filter-by-doc-id"],
-  "history": [
-    {"role": "user", "content": "previous question"},
-    {"role": "assistant", "content": "previous answer"}
-  ]
-}
+```
+Upload file -> Load -> Chunk -> Embed -> Store in ChromaDB
+                                              |
+Question -> Embed query -> Vector search -> Top-k chunks -> LLM -> Answer + sources
 ```
 
----
+1. **Load:** LangChain loaders read PDF, TXT, MD and DOCX files.
+2. **Chunk:** `RecursiveCharacterTextSplitter` splits text into overlapping chunks (500 characters with 100 overlap by default, configurable).
+3. **Embed:** chunks are embedded locally with `all-MiniLM-L6-v2` through `fastembed` (ONNX, runs on CPU with low memory).
+4. **Store and search:** vectors are stored in ChromaDB and searched by cosine similarity.
+5. **Generate:** the top matching chunks are passed to an LLM through an OpenAI-compatible API, with instructions to answer only from the provided context and to cite sources.
 
-## Project Structure
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React, Axios, react-dropzone, react-markdown |
+| Backend | Python, Flask, Flask-CORS, Gunicorn |
+| RAG pipeline | LangChain (loaders and text splitting) |
+| Embeddings | fastembed with `sentence-transformers/all-MiniLM-L6-v2` |
+| Vector store | ChromaDB (persistent, cosine similarity) |
+| LLM | OpenAI-compatible chat API (configured for Groq, model set by environment variable) |
+| Deployment | Vercel (frontend), Render (backend) |
+
+## Project structure
 
 ```
 rag-document-qa/
 ├── backend/
-│   ├── app.py                  # Flask app factory
-│   ├── config.py               # All config via env vars
+│   ├── app.py                  # Flask app factory, CORS, routes
+│   ├── config.py               # Settings read from environment variables
+│   ├── routes/                 # documents and query endpoints
+│   ├── services/
+│   │   ├── document_service.py # load, chunk, embed, store, list, delete
+│   │   ├── embeddings.py       # fastembed wrapper
+│   │   └── query_service.py    # retrieval and answer generation
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   ├── .env.example
-│   ├── routes/
-│   │   ├── documents.py        # Upload / list / delete endpoints
-│   │   └── query.py            # Query + retrieve endpoints
-│   └── services/
-│       ├── document_service.py # Load → chunk → embed → store
-│       └── query_service.py    # Retrieve → build context → generate
-│
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx             # Root component + layout
-│   │   ├── components/
-│   │   │   ├── DocumentSidebar.jsx   # File upload + doc list
-│   │   │   ├── PipelineBar.jsx       # Animated RAG pipeline
-│   │   │   ├── ChatMessage.jsx       # Message bubbles + sources
-│   │   │   └── ChatInput.jsx         # Query input + chips
-│   │   ├── hooks/
-│   │   │   ├── useDocuments.js       # Document state + upload
-│   │   │   └── useChat.js            # Chat state + history
-│   │   └── utils/
-│   │       └── api.js                # Axios API client
-│   ├── public/index.html
-│   ├── package.json
-│   ├── Dockerfile
-│   └── nginx.conf
-│
+│   └── Dockerfile
+├── frontend/                   # React app
 ├── docker-compose.yml
-├── .gitignore
 └── README.md
 ```
 
----
+## API
+
+Base path: `/api`
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/health` | Health check |
+| GET | `/api/documents/` | List uploaded documents |
+| POST | `/api/documents/upload` | Upload and index a document |
+| POST | `/api/query/...` | Ask a question (see `backend/routes/query.py`) |
+
+## Run locally
+
+### Prerequisites
+- Python 3.11
+- Node.js 18 or newer
+- An API key for an OpenAI-compatible LLM provider (for example a free Groq key from console.groq.com)
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # macOS / Linux
+pip install -r requirements.txt
+```
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```
+OPENAI_API_KEY=your_provider_api_key
+LLM_MODEL=your_model_name
+```
+
+Then start the server:
+
+```bash
+python app.py
+```
+
+The API runs at http://localhost:5000.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+The app runs at http://localhost:3000 and proxies API calls to the backend on port 5000.
 
 ## Configuration
 
-All backend config is via environment variables (see `backend/.env.example`):
+Backend environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OPENAI_API_KEY` | — | **Required.** Your OpenAI API key |
-| `LLM_MODEL` | `gpt-3.5-turbo` | LLM model for generation |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model |
-| `CHUNK_SIZE` | `500` | Characters per chunk |
-| `CHUNK_OVERLAP` | `100` | Overlap between chunks |
-| `TOP_K_RESULTS` | `5` | Chunks to retrieve per query |
-| `CHROMA_PERSIST_DIR` | `./chroma_db` | Where ChromaDB stores data |
+| Variable | Purpose | Default |
+|---|---|---|
+| `OPENAI_API_KEY` | API key for the LLM provider | none (required) |
+| `LLM_MODEL` | Chat model name | see `config.py` |
+| `LLM_BASE_URL` | OpenAI-compatible endpoint | `https://api.groq.com/openai/v1` |
+| `ALLOWED_ORIGINS` | Comma-separated list of frontend origins allowed by CORS | `http://localhost:3000,http://127.0.0.1:3000` |
+| `CHUNK_SIZE` | Characters per chunk | `500` |
+| `CHUNK_OVERLAP` | Overlap between chunks | `100` |
+| `TOP_K_RESULTS` | Chunks retrieved per question | `5` |
+| `CHROMA_PERSIST_DIR` | ChromaDB storage folder | `./chroma_db` |
+| `UPLOAD_FOLDER` | Uploaded files folder | `./uploads` |
 
----
+Frontend environment variable:
 
-## Tech Stack
+| Variable | Purpose |
+|---|---|
+| `REACT_APP_API_URL` | Base URL of the backend API, for example `https://your-backend.onrender.com/api` |
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, react-dropzone, react-markdown, Axios |
-| Backend | Python 3.11, Flask, Flask-CORS |
-| RAG Framework | LangChain 0.2 |
-| Vector DB | ChromaDB (local persistent) |
-| Embeddings | OpenAI text-embedding-3-small |
-| LLM | OpenAI GPT-3.5-turbo |
-| Document Parsing | pypdf, unstructured, docx2txt |
-| Deployment | Docker, Docker Compose, Nginx, Gunicorn |
+## Deployment
 
----
+- **Backend (Render):** root directory `backend`, build command `pip install -r requirements.txt`, start command `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 180`. Set `OPENAI_API_KEY`, `LLM_MODEL` and `ALLOWED_ORIGINS` in the service environment.
+- **Frontend (Vercel):** root directory `frontend`, framework Create React App. Set `REACT_APP_API_URL` to the backend URL ending in `/api`.
 
-## License
+## Known limitations
 
-MIT
+- The free hosting tier sleeps when idle, so the first request after a break is slow.
+- Storage on the free tier is temporary, so indexed documents can disappear when the server restarts.
+- Answer quality depends on the chosen LLM and on how well the question matches the uploaded text.
+
+## Author
+
+**Mrudhula**
+Final-year B.Tech student, Electronics and Communication Engineering, IIIT Jabalpur
+GitHub: https://github.com/mrudhula095
